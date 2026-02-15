@@ -4,14 +4,11 @@ LABEL maintainer="Keleshteri"
 LABEL description="Production-ready Grafana Alloy with flexible configuration"
 LABEL org.opencontainers.image.source="https://github.com/keleshteri/grafana-alloy-agent"
 
-# Install dependencies
+# Install dependencies (Alpine uses apk, not apt-get!)
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    wget \
+RUN apk add --no-cache \
     bash \
-    gettext-base \
-    && rm -rf /var/lib/apt/lists/*
+    gettext
 
 # Copy configuration template
 COPY configs/alloy-config.template /etc/alloy/config.alloy.template
@@ -40,7 +37,7 @@ ENV ALLOY_HTTP_LISTEN_ADDR="0.0.0.0:12345" \
     SKIP_MONITORING_LOGS="true" \
     ALLOY_MODE="worker"
 
-# NO HEALTHCHECK AT ALL
+# NO HEALTHCHECK - Coolify will just check if container is running
 
 # Use custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
