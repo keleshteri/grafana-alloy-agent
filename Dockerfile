@@ -1,6 +1,6 @@
 FROM grafana/alloy:latest
 
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 LABEL maintainer="Keleshteri"
 LABEL description="Grafana Alloy Agent - Minimal Wrapper"
