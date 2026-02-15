@@ -1,0 +1,38 @@
+version: '3.8'
+
+# WORKER VM EXAMPLE
+# Copy this file to docker-compose.yml and customize HOSTNAME
+services:
+  alloy:
+    image: ghcr.io/keleshteri/grafana-alloy-agent:latest
+    # Or use Docker Hub: keleshteri/grafana-alloy-agent:latest
+    container_name: alloy-agent
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '/var/log:/var/log:ro'
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+    environment:
+      # REQUIRED: Set your server hostname
+      - HOSTNAME=my-server-01
+      
+      # REQUIRED: Point to your Prometheus/Loki servers
+      - PROMETHEUS_URL=http://0.0.0.0:9090
+      - LOKI_URL=http://0.0.0.0:3100
+      
+      # Optional: Deployment mode
+      - ALLOY_MODE=worker
+      
+      # Optional: Customize scrape intervals
+      # - NODE_SCRAPE_INTERVAL=30s
+      # - CADVISOR_SCRAPE_INTERVAL=60s
+      
+      # Optional: Include monitoring stack logs
+      # - SKIP_MONITORING_LOGS=false
+    restart: unless-stopped
+    network_mode: host
+    # Resource limits
+    mem_limit: 384m
+    mem_reservation: 192m
+    cpus: 0.3
+    memswap_limit: 384m

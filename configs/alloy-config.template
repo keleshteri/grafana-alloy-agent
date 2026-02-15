@@ -1,0 +1,181 @@
+// ═══════════════════════════════════════════════════════
+// Grafana Alloy - Universal Configuration
+// Mode: ${ALLOY_MODE}
+// Hostname: ${HOSTNAME}
+// ═══════════════════════════════════════════════════════
+
+// ────────────────────────────────────────────────────────
+// 1. SYSTEM METRICS (Node Exporter)
+// ────────────────────────────────────────────────────────
+prometheus.exporter.unix "node" {
+  set_collectors = ["cpu", "meminfo", "diskstats", "netdev", "filesystem", "loadavg", "stat"]
+  
+  filesystem {
+    mount_points_exclude = "^/(dev|proc|sys|var/lib/docker/.+)($|/)"
+    fs_types_exclude     = "^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$"
+  }
+}
+
+discovery.relabel "node_metrics" {
+  targets = prometheus.exporter.unix.node.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "node-exporter"
+  }
+  
+  rule {
+    target_label = "host"
+    replacement  = "${HOSTNAME}"
+  }
+  
+  rule {
+    target_label = "alloy_mode"
+    replacement  = "${ALLOY_MODE}"
+  }
+}
+
+prometheus.scrape "node" {
+  targets         = discovery.relabel.node_metrics.output
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "${NODE_SCRAPE_INTERVAL}"
+}
+
+// ────────────────────────────────────────────────────────
+// 2. DOCKER CONTAINER METRICS (cAdvisor)
+// ────────────────────────────────────────────────────────
+prometheus.exporter.cadvisor "containers" {
+  docker_host             = "unix:///var/run/docker.sock"
+  store_container_labels  = false
+  docker_only             = true
+}
+
+discovery.relabel "cadvisor_metrics" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+  
+  rule {
+    target_label = "host"
+    replacement  = "${HOSTNAME}"
+  }
+  
+  rule {
+    target_label = "alloy_mode"
+    replacement  = "${ALLOY_MODE}"
+  }
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = discovery.relabel.cadvisor_metrics.output
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "${CADVISOR_SCRAPE_INTERVAL}"
+}
+
+// ────────────────────────────────────────────────────────
+// 3. DOCKER CONTAINER LOGS
+// ────────────────────────────────────────────────────────
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "30s"
+}
+
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+
+  // Optionally skip monitoring stack logs (controlled by SKIP_MONITORING_LOGS env)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(alloy.*|prometheus.*|grafana.*|loki.*)"
+    action        = "${SKIP_MONITORING_LOGS}" == "true" ? "drop" : "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  
+  rule {
+    source_labels = ["__meta_docker_container_image"]
+    target_label  = "image"
+  }
+  
+  rule {
+    target_label = "host"
+    replacement  = "${HOSTNAME}"
+  }
+  
+  rule {
+    target_label = "job"
+    replacement  = "docker-logs"
+  }
+  
+  rule {
+    target_label = "alloy_mode"
+    replacement  = "${ALLOY_MODE}"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_logs.output
+  forward_to = [loki.process.add_metadata.receiver]
+}
+
+// ────────────────────────────────────────────────────────
+// 4. LOG PROCESSING
+// ────────────────────────────────────────────────────────
+loki.process "add_metadata" {
+  forward_to = [loki.write.default.receiver]
+  
+  stage.docker {}
+  
+  stage.labels {
+    values = {
+      container   = "container",
+      image       = "image",
+      host        = "host",
+      job         = "job",
+      alloy_mode  = "alloy_mode",
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// 5. OUTPUTS - Prometheus & Loki
+// ────────────────────────────────────────────────────────
+prometheus.remote_write "default" {
+  endpoint {
+    url = "${PROMETHEUS_URL}/api/v1/write"
+    
+    queue_config {
+      capacity             = 5000
+      max_shards           = 5
+      min_shards           = 1
+      max_samples_per_send = 500
+      batch_send_deadline  = "10s"
+    }
+    
+    // Optional: Add basic auth if needed
+    // basic_auth {
+    //   username = "${PROMETHEUS_USERNAME}"
+    //   password = "${PROMETHEUS_PASSWORD}"
+    // }
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "${LOKI_URL}/loki/api/v1/push"
+    
+    // Optional: Add basic auth if needed
+    // basic_auth {
+    //   username = "${LOKI_USERNAME}"
+    //   password = "${LOKI_PASSWORD}"
+    // }
+  }
+}
