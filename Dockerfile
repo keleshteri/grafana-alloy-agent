@@ -1,27 +1,19 @@
 FROM grafana/alloy:latest
 
-LABEL maintainer="Keleshteri <mehdi.shaban.keleshteri@outlook.com>"
-LABEL description="Production-ready Grafana Alloy with built-in health checks and flexible configuration"
+LABEL maintainer="Keleshteri"
+LABEL description="Production-ready Grafana Alloy with flexible configuration"
 LABEL org.opencontainers.image.source="https://github.com/keleshteri/grafana-alloy-agent"
 
-# Install healthcheck dependencies
+# Install dependencies
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    wget \
-    bash \
-    gettext-base \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl wget bash gettext
 
 # Copy configuration template
 COPY configs/alloy-config.template /etc/alloy/config.alloy.template
 
 # Copy scripts
-COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-
-# Make scripts executable
-RUN chmod +x /usr/local/bin/healthcheck.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Create data directory
 RUN mkdir -p /var/lib/alloy/data && chown -R alloy:alloy /var/lib/alloy
@@ -32,7 +24,7 @@ USER alloy
 # Expose metrics port
 EXPOSE 12345
 
-# Environment variables with defaults
+# Environment variables
 ENV ALLOY_HTTP_LISTEN_ADDR="0.0.0.0:12345" \
     ALLOY_STORAGE_PATH="/var/lib/alloy/data" \
     HOSTNAME="unknown" \
@@ -43,9 +35,7 @@ ENV ALLOY_HTTP_LISTEN_ADDR="0.0.0.0:12345" \
     SKIP_MONITORING_LOGS="true" \
     ALLOY_MODE="worker"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
-  CMD /usr/local/bin/healthcheck.sh
+# NO HEALTHCHECK AT ALL
 
 # Use custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
