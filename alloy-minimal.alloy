@@ -1,0 +1,60 @@
+// ═══════════════════════════════════════════════════════
+// Minimal Grafana Alloy Configuration for Testing
+// ═══════════════════════════════════════════════════════
+
+// 1. SYSTEM METRICS (Node Exporter)
+prometheus.exporter.unix "node" {
+  set_collectors = ["cpu", "meminfo", "diskstats", "netdev", "filesystem"]
+}
+
+discovery.relabel "node_metrics" {
+  targets = prometheus.exporter.unix.node.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "node-exporter"
+  }
+  
+  rule {
+    target_label = "host"
+    replacement  = env("HOSTNAME")
+  }
+}
+
+prometheus.scrape "node" {
+  targets         = discovery.relabel.node_metrics.output
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "30s"
+}
+
+// 2. DOCKER CONTAINER METRICS (cAdvisor)
+prometheus.exporter.cadvisor "containers" {
+  docker_host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "cadvisor_metrics" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+  
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+  
+  rule {
+    target_label = "host"
+    replacement  = env("HOSTNAME")
+  }
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = discovery.relabel.cadvisor_metrics.output
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "60s"
+}
+
+// 3. OUTPUT - Send to Prometheus
+prometheus.remote_write "default" {
+  endpoint {
+    url = env("PROMETHEUS_URL") + "/api/v1/write"
+  }
+}

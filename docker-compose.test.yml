@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════
+# SIMPLE TEST - Use keleshteri/grafana-alloy-agent
+# Just a wrapper of grafana/alloy:latest
+# ═══════════════════════════════════════════════════════
+
+version: '3.8'
+services:
+  alloy:
+    # Use our wrapped image (same as grafana/alloy:latest for now)
+    image: ghcr.io/keleshteri/grafana-alloy-agent:latest
+    
+    container_name: alloy-agent
+    
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '/var/log:/var/log:ro'
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      # Mount the minimal config
+      - './alloy-minimal.alloy:/etc/alloy/config.alloy:ro'
+    
+    command:
+      - run
+      - '--server.http.listen-addr=0.0.0.0:12345'
+      - '--storage.path=/var/lib/alloy/data'
+      - /etc/alloy/config.alloy
+    
+    environment:
+      # Simple env vars
+      - HOSTNAME=${HOSTNAME}
+      - PROMETHEUS_URL=${PROMETHEUS_URL}
+    
+    restart: unless-stopped
+    network_mode: host
+    
+    # Resource limits
+    mem_limit: 384m
+    mem_reservation: 192m
+    cpus: 0.3
+    memswap_limit: 384m
