@@ -4,11 +4,12 @@ LABEL maintainer="Keleshteri"
 LABEL description="Production-ready Grafana Alloy with flexible configuration"
 LABEL org.opencontainers.image.source="https://github.com/keleshteri/grafana-alloy-agent"
 
-# Install dependencies (Alpine uses apk, not apt-get!)
+# Install dependencies (Grafana Alloy uses Debian base, not Alpine!)
 USER root
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
-    gettext
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration template
 COPY configs/alloy-config.template /etc/alloy/config.alloy.template
