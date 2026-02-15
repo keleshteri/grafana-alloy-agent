@@ -6,7 +6,12 @@ LABEL org.opencontainers.image.source="https://github.com/keleshteri/grafana-all
 
 # Install healthcheck dependencies
 USER root
-RUN apk add --no-cache curl wget bash
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    bash \
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration template
 COPY configs/alloy-config.template /etc/alloy/config.alloy.template
