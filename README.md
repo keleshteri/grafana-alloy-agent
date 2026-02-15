@@ -10,6 +10,18 @@ Production-ready Grafana Alloy Docker image with built-in health checks and flex
 ✅ Node Exporter + cAdvisor + Docker logs  
 ✅ Resource optimized  
 ✅ Multi-arch support (amd64/arm64)  
+✅ Automatic semantic versioning
+
+## Available Tags
+
+- `latest` - Latest stable build from main branch
+- `v1.0.0`, `v1.0.1`, etc. - Semantic versioned releases (auto-generated on each push)
+- `main` - Latest build from main branch
+- `main-<sha>` - Specific commit from main branch
+
+**Registries:**
+- GitHub Container Registry: `ghcr.io/keleshteri/grafana-alloy-agent:<tag>`
+- Docker Hub: `keleshteri/grafana-alloy-agent:<tag>`  
 
 ## Quick Start
 
@@ -95,6 +107,38 @@ environment:
 ```yaml
 environment:
   - SKIP_MONITORING_LOGS=false
+```
+
+## Versioning
+
+This project uses automatic semantic versioning. Every push to the `main` branch automatically:
+1. Calculates the next version (e.g., v1.0.0, v1.0.1, v1.0.2)
+2. Creates a git tag
+3. Builds and pushes Docker images with that version tag
+
+### Version Bumping (Commit Messages)
+
+- **Patch bump** (v1.0.0 → v1.0.1): Normal commits
+- **Minor bump** (v1.0.0 → v1.1.0): Include `(MINOR)` in commit message
+  ```bash
+  git commit -m "feat: Add new feature (MINOR)"
+  ```
+- **Major bump** (v1.0.0 → v2.0.0): Include `(MAJOR)` in commit message
+  ```bash
+  git commit -m "breaking: Major changes (MAJOR)"
+  ```
+
+### Using Specific Versions
+
+```yaml
+# Use latest stable
+image: ghcr.io/keleshteri/grafana-alloy-agent:latest
+
+# Pin to specific version (recommended for production)
+image: ghcr.io/keleshteri/grafana-alloy-agent:v1.0.0
+
+# Use latest from main branch
+image: ghcr.io/keleshteri/grafana-alloy-agent:main
 ```
 
 ## Building Locally

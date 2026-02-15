@@ -20,12 +20,34 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
+      contents: write  # Allow creating tags
+      packages: write  # Allow pushing to GHCR
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+
+      - name: Generate version tag
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
+          version_format: "${major}.${minor}.${patch}"
+          change_path: "."
+          bump_each_commit: true
+          search_commit_body: false
+
+      - name: Create and push git tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a ${{ steps.version.outputs.version_tag }} -m "Auto-generated version ${{ steps.version.outputs.version_tag }}"
+          git push origin ${{ steps.version.outputs.version_tag }} || echo "Tag already exists"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -62,6 +84,8 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ steps.version.outputs.version_tag }},enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
