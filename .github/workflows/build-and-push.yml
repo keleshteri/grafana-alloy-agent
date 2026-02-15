@@ -29,6 +29,26 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for version calculation
 
+      - name: Check for existing tags
+        id: check_tags
+        run: |
+          if git tag -l "v*" | grep -q .; then
+            echo "has_tags=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tags=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Create initial tag if needed
+        if: steps.check_tags.outputs.has_tags == 'false' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a v1.0.0 -m "Initial version v1.0.0"
+          git push origin v1.0.0
+          echo "Created initial tag v1.0.0"
+        shell: bash
+
       - name: Generate version tag
         id: version
         uses: paulhatch/semantic-version@v5.4.0
@@ -40,14 +60,16 @@ jobs:
           change_path: "."
           bump_each_commit: true
           search_commit_body: false
+          namespace: ""
 
       - name: Create and push git tag
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.version_tag != 'v1.0.0'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a ${{ steps.version.outputs.version_tag }} -m "Auto-generated version ${{ steps.version.outputs.version_tag }}"
           git push origin ${{ steps.version.outputs.version_tag }} || echo "Tag already exists"
+        shell: bash
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

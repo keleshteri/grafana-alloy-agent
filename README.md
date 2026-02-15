@@ -112,9 +112,12 @@ environment:
 ## Versioning
 
 This project uses automatic semantic versioning. Every push to the `main` branch automatically:
-1. Calculates the next version (e.g., v1.0.0, v1.0.1, v1.0.2)
-2. Creates a git tag
-3. Builds and pushes Docker images with that version tag
+1. **First push**: Creates `v1.0.0` automatically as the starting version
+2. **Subsequent pushes**: Calculates the next version (e.g., v1.0.1, v1.0.2)
+3. Creates a git tag
+4. Builds and pushes Docker images with that version tag
+
+**No manual setup needed!** Just push your changes and versioning happens automatically.
 
 ### Version Bumping (Commit Messages)
 

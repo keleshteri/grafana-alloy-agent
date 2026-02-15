@@ -2,6 +2,12 @@
 
 This repository uses **automatic semantic versioning** for Docker images. Every push to the `main` branch automatically generates a new version.
 
+## Initial Setup
+
+On your **first push to main**, the workflow will automatically create `v1.0.0` as the starting version. From there, all subsequent commits will increment the version automatically.
+
+**You don't need to do anything manually!** Just push your code and the versioning happens automatically.
+
 ## How It Works
 
 1. **Automatic Version Generation**: The GitHub Actions workflow calculates the next version based on your commits
